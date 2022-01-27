@@ -1,17 +1,18 @@
-# this program is written for Python2
-
 # imports
-import Tkinter
+import tkinter
 import time
 import random
 import sys
 import math
+import numpy as np
 
 # create game window
-window = Tkinter.Tk()
+window = tkinter.Tk()
+window_x_dim = 625
+window_y_dim = 625
 
 # create window size and set no-resize option
-window_dimensions = [625, 625]
+window_dimensions = [window_y_dim, window_y_dim]
 window.geometry(str(window_dimensions[0]) + "x" + str(window_dimensions[1]))
 window.resizable(0, 0)
 
@@ -25,7 +26,7 @@ window.protocol("WM_DELETE_WINDOW", sys.exit)
 frames_per_second = 12
 
 # create game canvas
-game_canvas = Tkinter.Canvas(window, width=window_dimensions[0], height=window_dimensions[1], bd=0, highlightthickness=0)
+game_canvas = tkinter.Canvas(window, width=window_dimensions[0], height=window_dimensions[1], bd=0, highlightthickness=0)
 game_canvas.pack()
 
 # create game variables
@@ -55,6 +56,18 @@ def generateAppleCoords():
 	# apple coords do not overlap, so return them
 	return generated_apple_coords
 
+def restart():
+	global player_coords
+	global player_tail
+	global player_velocity
+	global apple_coords
+
+	# restart game and variables
+	player_coords = [math.floor(game_dimensions[0] / 2.0), math.floor(game_dimensions[1] / 2.0)]
+	player_tail = []
+	player_velocity = [1, 0]
+	apple_coords = generateAppleCoords()
+
 # apple coordinates
 apple_coords = generateAppleCoords()
 
@@ -79,7 +92,7 @@ def gameloop():
 	global apple_coords
 
 	# call gameloop again in 100 milleseconds (gameloops is called every 100 MS)
-	window.after(1000 / frames_per_second, gameloop)
+	window.after(int(1000 / frames_per_second), gameloop)
 
 	# change velocity changed variable back to false
 	velocity_changed_this_frame = False
@@ -99,36 +112,49 @@ def gameloop():
 
 	# add ability to move through walls
 	if(player_coords[0] == game_dimensions[0]):
-		player_coords[0] = 0
+		restart()
 	elif(player_coords[0] == -1):
-		player_coords[0] = game_dimensions[0] - 1
+		restart()
 	elif(player_coords[1] == game_dimensions[1]):
-		player_coords[1] = 0
+		restart()
 	elif(player_coords[1] == -1):
-		player_coords[1] = game_dimensions[1] - 1
-	
+		restart()
 
 	# loop through tail, display each item in tail, and check if it's colliding w/head: if so, gameover and restart
- 	for item in player_tail:
+	for item in player_tail:
  		# check for collision
- 		if(item[0] == player_coords[0] and item[1] == player_coords[1]):
- 			# restart game and variables
-			player_coords = [math.floor(game_dimensions[0] / 2.0), math.floor(game_dimensions[1] / 2.0)]
-			player_tail = []
-			player_velocity = [1, 0]
-			apple_coords = generateAppleCoords()
-
- 		# display item
+		if(item[0] == player_coords[0] and item[1] == player_coords[1]):
+			restart()
+		# display item
 		createGridItem(item, "#00ff00")
 
 	# display apple
 	createGridItem(apple_coords, "#ff0000")
 
+	grid = getGrid()
+	
 	# check if player has eaten apple; if yes, add 1 to tail; if not, move as normal
 	if(apple_coords[0] == player_coords[0] and apple_coords[1] == player_coords[1]):
 		apple_coords = generateAppleCoords()
 	else:
 		player_tail.pop(0)
+
+def getGrid():
+	global player_coords
+	global player_tail
+	global apple_coords
+
+	grid = np.zeros((window_x_dim, window_y_dim), dtype=np.int8)
+	for x_val in range(window_x_dim):
+		for y_val in range(window_y_dim):
+			for segment in player_tail:
+				if(x_val == segment[0] and y_val == segment[1]):
+					grid[x_val, y_val] = 1
+			if(x_val == player_coords[0] and y_val == player_coords[1]):
+				grid[x_val, y_val] = 2 
+			if(x_val == apple_coords[0] and y_val == apple_coords[1]):
+				grid[x_val, y_val] = 3
+	return grid
 
 # handle arrow keys keydown events
 def onKeyDown(e):
